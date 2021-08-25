@@ -102,7 +102,6 @@ class LRBranch(nn.Module):
         self.se_block = SEBlock(enc_channels[4], enc_channels[4], reduction=4)
         self.conv_lr16x = Conv2dIBNormRelu(enc_channels[4], enc_channels[3], 5, stride=1, padding=2)
         self.conv_lr8x = Conv2dIBNormRelu(enc_channels[3], enc_channels[2], 5, stride=1, padding=2)
-        self.conv_lr = Conv2dIBNormRelu(enc_channels[2], 1, kernel_size=3, stride=2, padding=1, with_ibn=False, with_relu=False)
 
     def forward(self, img, only_semantic):
         enc_features = self.backbone.forward(img)
@@ -126,29 +125,7 @@ class HRBranch(nn.Module):
     def __init__(self, hr_channels, enc_channels):
         super(HRBranch, self).__init__()
 
-        self.tohr_enc2x = Conv2dIBNormRelu(enc_channels[0], hr_channels, 1, stride=1, padding=0)
-        self.conv_enc2x = Conv2dIBNormRelu(hr_channels + 3, hr_channels, 3, stride=2, padding=1)
-
         self.tohr_enc4x = Conv2dIBNormRelu(enc_channels[1], hr_channels, 1, stride=1, padding=0)
-        self.conv_enc4x = Conv2dIBNormRelu(2 * hr_channels, 2 * hr_channels, 3, stride=1, padding=1)
-
-        self.conv_hr4x = nn.Sequential(
-            Conv2dIBNormRelu(3 * hr_channels + 3, 2 * hr_channels, 3, stride=1, padding=1),
-            Conv2dIBNormRelu(2 * hr_channels, 2 * hr_channels, 3, stride=1, padding=1),
-            Conv2dIBNormRelu(2 * hr_channels, hr_channels, 3, stride=1, padding=1),
-        )
-
-        self.conv_hr2x = nn.Sequential(
-            Conv2dIBNormRelu(2 * hr_channels, 2 * hr_channels, 3, stride=1, padding=1),
-            Conv2dIBNormRelu(2 * hr_channels, hr_channels, 3, stride=1, padding=1),
-            Conv2dIBNormRelu(hr_channels, hr_channels, 3, stride=1, padding=1),
-            Conv2dIBNormRelu(hr_channels, hr_channels, 3, stride=1, padding=1),
-        )
-
-        self.conv_hr = nn.Sequential(
-            Conv2dIBNormRelu(hr_channels + 3, hr_channels, 3, stride=1, padding=1),
-            Conv2dIBNormRelu(hr_channels, 1, kernel_size=1, stride=1, padding=0, with_ibn=False, with_relu=False),
-        )
 
         """ New convolution block """
         self.tohr_hr4x = Conv2dIBNormRelu(hr_channels, hr_channels, 3, stride=1, padding=1)
