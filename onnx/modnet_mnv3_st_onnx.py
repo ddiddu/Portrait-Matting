@@ -101,12 +101,9 @@ class LRBranch(nn.Module):
         self.se_block = SEBlock(enc_channels[4], enc_channels[4], reduction=4)
         self.conv_lr16x = Conv2dIBNormRelu(enc_channels[4], enc_channels[3], 5, stride=1, padding=2)
         self.conv_lr8x = Conv2dIBNormRelu(enc_channels[3], enc_channels[2], 5, stride=1, padding=2)
-        self.conv_lr = Conv2dIBNormRelu(enc_channels[2], 1, kernel_size=3, stride=2, padding=1, with_ibn=False, with_relu=False)
 
         """ New convolution block """
         self.mobilenetv3 = backbone
-        self.se_enc32x = SEBlock(enc_channels[3], enc_channels[3], reduction=4)
-        self.tolr_lr16x = Conv2dIBNormRelu(enc_channels[3], enc_channels[3], 5, stride=1, padding=2)
 
     def forward(self, img, only_semantic):
         enc_features = self.mobilenetv3.forward(img)
