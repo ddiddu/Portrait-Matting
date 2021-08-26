@@ -1,6 +1,6 @@
 """
 Example:
-    python -m src.__init__ --backbone=mnv2 --train-data=SPS --ckpt-path=pretrained/modnet_webcam_portrait_matting.ckpt --output-path=pretrained/tmp.ckpt --consistency=True --bgd=False
+    python -m src.__init__ --backbone=mnv2 --train-data=SPS --ckpt-path=pretrained/modnet_webcam_portrait_matting.ckpt --output-path=pretrained/tmp.ckpt --consistency=False --bgd=False
 """
 
 import os
@@ -26,18 +26,12 @@ writer = SummaryWriter()
 
 # Create your dataloader
 class Human(data.Dataset):
-    def __init__(self, train_data, image_names, consistency=False, bgd=False):
-        self.consistency = consistency
-        self.bgd = bgd
+    def __init__(self, train_data, image_names):
         self.im_names = []
         with open(image_names) as data:
             images = data.read().splitlines()
             for im in images:
                 if im.split('/')[0] in train_data:
-                    if consistency == True:
-                        im = os.path.join(im.split('/')[0], im.split('/')[1] + '_aug' , im.split('/')[2])
-                    if bgd == True:
-                        im = os.path.join(im.split('/')[0], im.split('/')[1] + '_bgd' , im.split('/')[2])
                     self.im_names.append(im)
 
     def __getitem__(self, idx):
@@ -51,10 +45,6 @@ class Human(data.Dataset):
         
         mt_name = im_name.split('/')[-1].split('.')[0] + '.jpg'
         output_path = os.path.join('Data', im_name.split('/')[0], 'output')
-        if self.consistency == True:
-            output_path = output_path + '_aug'
-        if self.bgd == True:
-            output_path = output_path + '_bgd'
         mt_path = os.path.join(output_path, mt_name)
         
         if not os.path.isfile(mt_path):
@@ -116,20 +106,19 @@ if __name__ == '__main__':
     train_data = args.train_data.split('/')
     optimizer = torch.optim.Adam(modnet.parameters(), lr=lr, betas=(0.9, 0.99))
     
+    train_path = 'train.txt'
     # set training set and validation set
-    # if args.consistency == 'True':
-    #     input_path = input_path + '_aug'
-    #     output_path = output_path + '_aug'
-    # if args.bgd == 'True':
-    #     input_path = input_path + '_bgd'
-    #     output_path = output_path + '_bgd'
+    if args.consistency == "True":
+        train_path = train_path.split['.'][0] + '_aug'
+    if args.bgd == "True":
+        train_path = train_path.split['.'][0] + '_bgd'
     dataset_train = Human(train_data=train_data, 
-                          image_names = os.path.join('Data', 'train.txt'),)
-                        #   consistency = args.consistency)
+                          image_names=os.path.join('Data', train_path),
+                          consistency=args.consistency, bgd=args.bgd)
     dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=bs, shuffle=True, num_workers=workers)
 
     dataset_val = Human(train_data=train_data,
-                        image_names = os.path.join('Data', 'val.txt'))
+                        image_names=os.path.join('Data', 'val.txt'))
     dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=1, shuffle=False)
     print('image number in training: %d, validation: %d' % (len(dataset_train), len(dataset_val)))
 
