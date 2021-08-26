@@ -1,6 +1,6 @@
 """
 Example:
-    python -m src.__init__ --backbone=mnv2 --data-path=SPS --ckpt-path=pretrained/mnv2_vol1_SPS_matte_val_mse.ckpt --output-path=pretrained/mnv2_vol1_SPS_matte_aug_all_val.ckpt --consistency=True --bgd=False
+    python -m src.__init__ --backbone=mnv2 --train-data=SPS --ckpt-path=pretrained/modnet_webcam_portrait_matting.ckpt --output-path=pretrained/tmp.ckpt --consistency=True --bgd=False
 """
 
 import os
@@ -26,23 +26,39 @@ writer = SummaryWriter()
 
 # Create your dataloader
 class Human(data.Dataset):
-    def __init__(self, input_path, output_path, image_names):
-        self.input_path = input_path 
-        self.output_path = output_path
+    def __init__(self, train_data, image_names, consistency=False, bgd=False):
+        self.consistency = consistency
+        self.bgd = bgd
+        self.im_names = []
         with open(image_names) as data:
-            self.im_names = data.read().splitlines()
+            images = data.read().splitlines()
+            for im in images:
+                if im.split('/')[0] in train_data:
+                    if consistency == True:
+                        im = os.path.join(im.split('/')[0], im.split('/')[1] + '_aug' , im.split('/')[2])
+                    if bgd == True:
+                        im = os.path.join(im.split('/')[0], im.split('/')[1] + '_bgd' , im.split('/')[2])
+                    self.im_names.append(im)
 
     def __getitem__(self, idx):
         im_name = self.im_names[idx]
 
         # read image
-        im_path = os.path.join(self.input_path, im_name)
+        im_path = os.path.join('Data', im_name)
         im = Image.open(im_path)
 
         im, _, _ = process_image(im)
         
-        mt_name = im_name.split('.')[0] + '.jpg'
-        mt_path = os.path.join(self.output_path, mt_name)
+        mt_name = im_name.split('/')[-1].split('.')[0] + '.jpg'
+        output_path = os.path.join('Data', im_name.split('/')[0], 'output')
+        if self.consistency == True:
+            output_path = output_path + '_aug'
+        if self.bgd == True:
+            output_path = output_path + '_bgd'
+        mt_path = os.path.join(output_path, mt_name)
+        
+        if not os.path.isfile(mt_path):
+            mt_path = mt_path.split('.')[0] + '.png'
         
         if not os.path.isfile(mt_path):
             mt_path = mt_path.split('.')[0] + '.png'
@@ -55,13 +71,12 @@ class Human(data.Dataset):
     
     def __len__(self):
         return len(self.im_names)
-    
 
 if __name__ == '__main__':
     # define cmd arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--backbone', type=str, help='backbone model of MODNet')
-    parser.add_argument('--data-path', type=str, help='path of data')
+    parser.add_argument('--train-data', type=str, help='path of data')
     parser.add_argument('--ckpt-path', type=str, help='path of pre-trained MODNet')
     parser.add_argument('--output-path', type=str, help='path of trained checkpoint')
     parser.add_argument('--consistency', type=str, help='use of consistency constraint loss')
@@ -77,7 +92,7 @@ if __name__ == '__main__':
     lr = 0.01       # learning rate
     if args.backbone == "mnv2":
         lr = 0.00001
-    epochs = 10      # total epochs
+    epochs = 10     # total epochs
     workers = 4     # number of data laoding workers
 
     if args.backbone == "mnv2":
@@ -98,28 +113,23 @@ if __name__ == '__main__':
         # Load pretrained ckpt
         backup_modnet.load_state_dict(torch.load(args.ckpt_path))
         
-    data_path = args.data_path
+    train_data = args.train_data.split('/')
     optimizer = torch.optim.Adam(modnet.parameters(), lr=lr, betas=(0.9, 0.99))
     
     # set training set and validation set
-    train_path = os.path.join('Data', data_path)
-    input_path = os.path.join(train_path, 'input')
-    output_path = os.path.join(train_path, 'output')
-    if args.consistency == 'True':
-        input_path = input_path + '_aug'
-        output_path = output_path + '_aug'
-    if args.bgd == 'True':
-        input_path = input_path + '_bgd'
-        output_path = output_path + '_bgd'
-    dataset_train = Human(input_path=input_path, output_path=output_path,
-                          image_names = os.path.join(input_path, 'train.txt'))
+    # if args.consistency == 'True':
+    #     input_path = input_path + '_aug'
+    #     output_path = output_path + '_aug'
+    # if args.bgd == 'True':
+    #     input_path = input_path + '_bgd'
+    #     output_path = output_path + '_bgd'
+    dataset_train = Human(train_data=train_data, 
+                          image_names = os.path.join('Data', 'train.txt'),)
+                        #   consistency = args.consistency)
     dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=bs, shuffle=True, num_workers=workers)
 
-    val_path = os.path.join('Data', 'PPM-100')
-    val_input_path = os.path.join(val_path, 'image')
-    val_output_path = os.path.join(val_path, 'matte')
-    dataset_val = Human(input_path=val_input_path, output_path=val_output_path, 
-                        image_names=os.path.join(val_input_path, 'val.txt'))
+    dataset_val = Human(train_data=train_data,
+                        image_names = os.path.join('Data', 'val.txt'))
     dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=1, shuffle=False)
     print('image number in training: %d, validation: %d' % (len(dataset_train), len(dataset_val)))
 
