@@ -113,8 +113,7 @@ if __name__ == '__main__':
     if args.bgd == "True":
         train_path = train_path.split['.'][0] + '_bgd'
     dataset_train = Human(train_data=train_data, 
-                          image_names=os.path.join('Data', train_path),
-                          consistency=args.consistency, bgd=args.bgd)
+                          image_names=os.path.join('Data', train_path))
     dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=bs, shuffle=True, num_workers=workers)
 
     dataset_val = Human(train_data=train_data,
